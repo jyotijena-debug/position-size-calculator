@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Position Size Calculator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f4f4f4;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 2rem 1rem;
+      min-height: 100vh;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 1.5rem;
+      color: #111;
+    }
+
+    .field { margin-bottom: 1rem; }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 5px;
+    }
+
+    .field-row {
+      display: flex;
+      align-items: center;
+    }
+
+    .affix {
+      font-size: 14px;
+      color: #555;
+      background: #f5f5f5;
+      border: 1px solid #ccc;
+      padding: 0 10px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+    }
+
+    .affix.prefix {
+      border-right: none;
+      border-radius: 6px 0 0 6px;
+    }
+
+    .affix.suffix {
+      border-left: none;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .field-row input {
+      flex: 1;
+      height: 36px;
+      padding: 0 10px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      outline: none;
+      background: #fff;
+      color: #111;
+    }
+
+    .field-row input:focus { border-color: #888; }
+    .field-row.no-affix input { border-radius: 6px; }
+
+    .error {
+      font-size: 12px;
+      color: #c0392b;
+      margin-top: 4px;
+      display: none;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid #eee;
+      margin: 1.5rem 0;
+    }
+
+    .results {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .metric {
+      background: #f8f8f8;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .metric p:first-child {
+      font-size: 12px;
+      color: #777;
+      margin-bottom: 4px;
+    }
+
+    .metric p:last-child {
+      font-size: 22px;
+      font-weight: 500;
+      color: #111;
+    }
+
+    .metric.accent p:last-child { color: #0F6E56; }
+
+    .formula {
+      font-size: 12px;
+      color: #aaa;
+      text-align: center;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Position size calculator</h1>
+
+    <div class="field">
+      <label>Account balance</label>
+      <div class="field-row">
+        <span class="affix prefix">$</span>
+        <input type="number" id="balance" placeholder="10000" min="0" step="100">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Risk percentage</label>
+      <div class="field-row">
+        <input type="number" id="risk" placeholder="1" min="0" max="100" step="0.1">
+        <span class="affix suffix">%</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Stop loss distance</label>
+      <div class="field-row no-affix">
+        <input type="number" id="stoploss" placeholder="5" min="0" step="0.01">
+      </div>
+      <p class="error" id="err-sl">Stop loss distance must be greater than 0.</p>
+    </div>
+
+    <div class="field">
+      <label>Asset price</label>
+      <div class="field-row">
+        <span class="affix prefix">$</span>
+        <input type="number" id="price" placeholder="150" min="0" step="0.01">
+      </div>
+      <p class="error" id="err-p">Asset price must be greater than 0.</p>
+    </div>
+
+    <hr>
+
+    <div class="results">
+      <div class="metric accent">
+        <p>Position size (units)</p>
+        <p id="out-units">—</p>
+      </div>
+      <div class="metric">
+        <p>Position value</p>
+        <p id="out-value">—</p>
+      </div>
+      <div class="metric">
+        <p>Risk amount ($)</p>
+        <p id="out-risk">—</p>
+      </div>
+      <div class="metric">
+        <p>Risk / account</p>
+        <p id="out-pct">—</p>
+      </div>
+    </div>
+
+    <p class="formula">Position size = (Balance × Risk%) ÷ (Stop loss × Price)</p>
+  </div>
+
+  <script>
+    ['balance','risk','stoploss','price'].forEach(id =>
+      document.getElementById(id).addEventListener('input', calc)
+    );
+
+    function fmt(n, d = 2) {
+      return n.toLocaleString(undefined, {
+        minimumFractionDigits: d,
+        maximumFractionDigits: d
+      });
+    }
+
+    function calc() {
+      const balance  = parseFloat(document.getElementById('balance').value);
+      const risk     = parseFloat(document.getElementById('risk').value);
+      const stoploss = parseFloat(document.getElementById('stoploss').value);
+      const price    = parseFloat(document.getElementById('price').value);
+
+      document.getElementById('err-sl').style.display =
+        (!isNaN(stoploss) && stoploss <= 0) ? 'block' : 'none';
+      document.getElementById('err-p').style.display =
+        (!isNaN(price) && price <= 0) ? 'block' : 'none';
+
+      const valid = [balance, risk, stoploss, price].every(v => !isNaN(v) && v > 0) && risk <= 100;
+
+      if (!valid) {
+        ['out-units','out-value','out-risk','out-pct'].forEach(id =>
+          document.getElementById(id).textContent = '—'
+        );
+        return;
+      }
+
+      const riskAmt = balance * (risk / 100);
+      const posSize = riskAmt / (stoploss * price);
+      const posValue = posSize * price;
+
+      document.getElementById('out-units').textContent = fmt(posSize, 4);
+      document.getElementById('out-value').textContent = '$' + fmt(posValue);
+      document.getElementById('out-risk').textContent  = '$' + fmt(riskAmt);
+      document.getElementById('out-pct').textContent   = fmt(risk, 2) + '%';
+    }
+  </script>
+</body>
+</html>
